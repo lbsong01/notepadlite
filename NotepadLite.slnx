@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NotepadLite.App/NotepadLite.App.csproj" />
+    <Project Path="src/NotepadLite.Core/NotepadLite.Core.csproj" />
+    <Project Path="src/NotepadLite.Syntax/NotepadLite.Syntax.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NotepadLite.Syntax.Tests/NotepadLite.Syntax.Tests.csproj" />
+  </Folder>
+</Solution>

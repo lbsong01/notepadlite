@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "saSOrOJ/Ls4=",
+  "success": true,
+  "projectFilePath": "D:\\sharpcode\\notepad\\src\\NotepadLite.Syntax\\NotepadLite.Syntax.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\lisong\\.nuget\\packages\\ncrontab.signed\\3.4.0\\ncrontab.signed.3.4.0.nupkg.sha512"
+  ],
+  "logs": []
+}
