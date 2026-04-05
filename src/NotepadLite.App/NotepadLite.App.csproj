@@ -33,6 +33,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <AssemblyName>NotepadLite.App</AssemblyName>
+    <RootNamespace>NotepadLite.App</RootNamespace>
   </PropertyGroup>
 
 </Project>

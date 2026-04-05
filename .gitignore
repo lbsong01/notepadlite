@@ -2,6 +2,10 @@
 bin/
 obj/
 
+**/*.dll
+**/*.exe
+**/*.pdb
+
 # Publish artifacts
 artifacts/publish/
 
