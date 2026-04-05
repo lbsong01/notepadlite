@@ -1,0 +1,16 @@
+<NotepadPlus>
+  <UserLang name="JSON" ext="json jsonc">
+    <Keywords>
+      <Keywords name="Keywords1">true false null</Keywords>
+      <Keywords name="Operators">{ } [ ] : ,</Keywords>
+    </Keywords>
+    <Delimiters>
+      <Delimiter name="string-double" open='&quot;' close='&quot;' />
+    </Delimiters>
+    <Comments>
+      <LineComment value="//" />
+      <BlockCommentStart value="/*" />
+      <BlockCommentEnd value="*/" />
+    </Comments>
+  </UserLang>
+</NotepadPlus>

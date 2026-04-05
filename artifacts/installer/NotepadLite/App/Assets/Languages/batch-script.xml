@@ -1,0 +1,16 @@
+<NotepadPlus>
+  <UserLang name="Batch Script" ext="bat cmd">
+    <Keywords>
+      <Keywords name="Keywords1">echo if else set call goto for exist defined setlocal endlocal shift exit</Keywords>
+      <Keywords name="Keywords2">errorlevel not in do enabledelayedexpansion</Keywords>
+      <Keywords name="Operators">== EQU NEQ GEQ LEQ GTR LSS</Keywords>
+    </Keywords>
+    <Delimiters>
+      <Delimiter name="string-double" open='&quot;' close='&quot;' />
+    </Delimiters>
+    <Comments>
+      <LineComment value="::" />
+      <LineCommentAlt value="REM" />
+    </Comments>
+  </UserLang>
+</NotepadPlus>

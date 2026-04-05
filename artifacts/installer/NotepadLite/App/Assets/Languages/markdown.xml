@@ -1,0 +1,17 @@
+<NotepadPlus>
+  <UserLang name="Markdown" ext="md markdown">
+    <Keywords>
+      <Keywords name="Keywords1"># ## ### #### ##### ###### &gt; - * + 1. 2. 3.</Keywords>
+      <Keywords name="Keywords2">TODO NOTE IMPORTANT TIP WARNING</Keywords>
+      <Keywords name="Operators">[ ] ( ) ` ``` !</Keywords>
+    </Keywords>
+    <Delimiters>
+      <Delimiter name="string-double" open='&quot;' close='&quot;' />
+      <Delimiter name="string-single" open="'" close="'" />
+    </Delimiters>
+    <Comments>
+      <BlockCommentStart value="&lt;!--" />
+      <BlockCommentEnd value="--&gt;" />
+    </Comments>
+  </UserLang>
+</NotepadPlus>

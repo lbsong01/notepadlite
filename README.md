@@ -38,6 +38,24 @@ dotnet run --project src/NotepadLite.App/NotepadLite.App.csproj -- "C:\path\to\f
 dotnet test NotepadLite.slnx
 ```
 
+## Build Installer
+
+The repository includes a self-contained Windows installer package. Running the packaged installer copies the app to `C:\Program Files\NotepadLite`, registers an uninstall entry, creates a Start menu shortcut, and adds a Windows Explorer right-click command named `Open with NotepadLite` for all files.
+
+Build the installer package with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
+```
+
+Outputs:
+
+- Published application files: `artifacts\publish\NotepadLite\win-x64`
+- Installer package folder: `artifacts\installer\NotepadLite`
+- Installer archive: `artifacts\installer\NotepadLite-Installer.zip`
+
+To install on a machine, open `artifacts\installer\NotepadLite` and run `Install-NotepadLite.cmd`. The installer will request elevation because it installs machine-wide.
+
 ## Adding Language Definitions
 
 Built-in language definitions are copied from `assets/languages` into the app output under `Assets/Languages`.
@@ -60,7 +78,9 @@ The current importer does not attempt full Notepad++ compatibility. Unsupported 
 
 ## Windows Context Menu
 
-Windows Explorer can launch the editor from a file right-click menu once the app accepts a file path argument. After publishing or installing the app to a stable path, add a registry entry that passes the selected file path as `%1`.
+Windows Explorer can launch the editor from a file right-click menu once the app accepts a file path argument. The installer package now creates this integration automatically.
+
+If you need a manual fallback after copying the app to a stable path, use `scripts/notepadlite-context-menu.reg`, which points to the default installer location.
 
 Example `.reg` content:
 
@@ -69,13 +89,13 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\*\shell\OpenWithNotepadLite]
 @="Open with NotepadLite"
+"Icon"="C:\\Program Files\\NotepadLite\\NotepadLite.App.exe"
 
 [HKEY_CURRENT_USER\Software\Classes\*\shell\OpenWithNotepadLite\command]
-@="\"C:\\Apps\\NotepadLite\\NotepadLite.App.exe\" \"%1\""
+@="\"C:\\Program Files\\NotepadLite\\NotepadLite.App.exe\" \"%1\""
 ```
 
 Notes:
 
-- Replace the executable path with the actual published app path.
-- Use `HKEY_CURRENT_USER` for a per-user context menu without admin rights.
-- For a standard `Open with` experience, you can also register file associations through an installer, but the command above is the minimal shell-integration path.
+- Replace the executable path if you install the app elsewhere.
+- The installer package uses a machine-wide registration under `HKEY_LOCAL_MACHINE`, while the `.reg` file uses `HKEY_CURRENT_USER` as a no-installer fallback.

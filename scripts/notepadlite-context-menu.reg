@@ -2,7 +2,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\*\shell\OpenWithNotepadLite]
 @="Open with NotepadLite"
-"Icon"="D:\\sharpcode\\notepad\\src\\NotepadLite.App\\bin\\Debug\\net10.0-windows\\NotepadLite.App.exe"
+"Icon"="C:\\Program Files\\NotepadLite\\NotepadLite.App.exe"
 
 [HKEY_CURRENT_USER\Software\Classes\*\shell\OpenWithNotepadLite\command]
-@="\"D:\\sharpcode\\notepad\\src\\NotepadLite.App\\bin\\Debug\\net10.0-windows\\NotepadLite.App.exe\" \"%1\""
+@="\"C:\\Program Files\\NotepadLite\\NotepadLite.App.exe\" \"%1\""
