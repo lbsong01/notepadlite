@@ -26,6 +26,12 @@ dotnet build NotepadLite.slnx
 dotnet run --project src/NotepadLite.App/NotepadLite.App.csproj
 ```
 
+To open a file directly at startup:
+
+```powershell
+dotnet run --project src/NotepadLite.App/NotepadLite.App.csproj -- "C:\path\to\file.json"
+```
+
 ## Test
 
 ```powershell
@@ -51,3 +57,25 @@ The current importer supports:
 - symmetric string delimiters from `Delimiter` elements
 
 The current importer does not attempt full Notepad++ compatibility. Unsupported constructs are reported in the diagnostics area instead of being silently approximated.
+
+## Windows Context Menu
+
+Windows Explorer can launch the editor from a file right-click menu once the app accepts a file path argument. After publishing or installing the app to a stable path, add a registry entry that passes the selected file path as `%1`.
+
+Example `.reg` content:
+
+```reg
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\OpenWithNotepadLite]
+@="Open with NotepadLite"
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\OpenWithNotepadLite\command]
+@="\"C:\\Apps\\NotepadLite\\NotepadLite.App.exe\" \"%1\""
+```
+
+Notes:
+
+- Replace the executable path with the actual published app path.
+- Use `HKEY_CURRENT_USER` for a per-user context menu without admin rights.
+- For a standard `Open with` experience, you can also register file associations through an installer, but the command above is the minimal shell-integration path.
