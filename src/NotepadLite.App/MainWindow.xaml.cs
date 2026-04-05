@@ -151,9 +151,36 @@ public partial class MainWindow : Window
             return;
         }
 
-        currentDocument = documentFileService.Load(openFileDialog.FileName);
-        RefreshDocumentPresentation();
-        UpdateStatus("Opened document");
+        OpenDocumentFromPath(openFileDialog.FileName);
+    }
+
+    /// <summary>
+    /// Opens a document from a specific path.
+    /// </summary>
+    /// <param name="filePath">The file path to open.</param>
+    /// <returns><see langword="true"/> when the document was loaded; otherwise, <see langword="false"/>.</returns>
+    public bool OpenDocumentFromPath(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        try
+        {
+            currentDocument = documentFileService.Load(filePath);
+            RefreshDocumentPresentation();
+            UpdateStatus("Opened document");
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(
+                this,
+                $"Unable to open '{filePath}'.{Environment.NewLine}{Environment.NewLine}{exception.Message}",
+                "Open document failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
+            return false;
+        }
     }
 
     /// <summary>

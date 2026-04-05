@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+
+# Publish artifacts
+artifacts/publish/
+
+# Test and coverage artifacts
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# User and IDE-specific files
+.vs/
+*.user
+*.rsuser
+*.suo
+
+# Logs and transient files
+*.log
