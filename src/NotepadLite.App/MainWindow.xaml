@@ -6,6 +6,7 @@
         xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
         mc:Ignorable="d"
         Title="NotepadLite"
+        Icon="Resources/NotepadLite.ico"
         Height="760"
         Width="1180"
         MinHeight="520"

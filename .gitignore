@@ -5,6 +5,11 @@ obj/
 **/*.dll
 **/*.exe
 **/*.pdb
+**/*.nupkg
+**/*.vsix
+**/*.msi
+**/*.appx
+**/*.zip
 
 # Publish artifacts
 artifacts/publish/

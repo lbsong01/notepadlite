@@ -12,7 +12,7 @@ function Test-Administrator
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Ensure-Administrator
+function Start-ElevatedInstaller
 {
     if (Test-Administrator)
     {
@@ -30,11 +30,12 @@ function Ensure-Administrator
     exit
 }
 
-Ensure-Administrator
+Start-ElevatedInstaller
 
 $installedExecutable = Join-Path $InstallDirectory "NotepadLite.App.exe"
 $startMenuShortcut = Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs\NotepadLite.lnk"
 $contextMenuKey = "HKLM:\Software\Classes\*\shell\OpenWithNotepadLite"
+$perUserContextMenuKey = "HKCU:\Software\Classes\*\shell\OpenWithNotepadLite"
 $uninstallKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\NotepadLite"
 
 $runningProcess = Get-Process -Name "NotepadLite.App" -ErrorAction SilentlyContinue
@@ -46,6 +47,11 @@ if ($runningProcess)
 if (Test-Path $contextMenuKey)
 {
     Remove-Item -Path $contextMenuKey -Recurse -Force
+}
+
+if (Test-Path $perUserContextMenuKey)
+{
+    Remove-Item -Path $perUserContextMenuKey -Recurse -Force
 }
 
 if (Test-Path $uninstallKey)

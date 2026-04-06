@@ -24,10 +24,11 @@ if (Test-Path $publishDir)
 
 New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
 New-Item -ItemType Directory -Path $installerOutputDir -Force | Out-Null
+New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 
-if (Test-Path $packageRoot)
+if (Test-Path $packageAppDirectory)
 {
-    Remove-Item -Path $packageRoot -Recurse -Force
+    Remove-Item -Path (Join-Path $packageAppDirectory "*") -Recurse -Force
 }
 
 New-Item -ItemType Directory -Path $packageAppDirectory -Force | Out-Null

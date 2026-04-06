@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Resources\NotepadLite.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ApplicationDefinition Update="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -35,6 +39,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>NotepadLite.App</AssemblyName>
     <RootNamespace>NotepadLite.App</RootNamespace>
+    <ApplicationIcon>Resources\NotepadLite.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>
