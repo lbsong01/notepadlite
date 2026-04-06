@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly string builtInDefinitionsPath;
     private readonly string userDefinitionsPath;
     private EditorDocument currentDocument;
+    private LanguageDefinition currentLanguage;
     private IReadOnlyList<LanguageDefinition> availableLanguages;
 
     /// <summary>
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
         builtInDefinitionsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Languages");
         userDefinitionsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NotepadLite", "Languages");
         currentDocument = EditorDocument.CreateEmpty();
+        currentLanguage = LanguageDefinition.CreatePlainText();
         availableLanguages = [];
 
         Editor.TextChanged += EditorTextChanged;
@@ -71,17 +73,6 @@ public partial class MainWindow : Window
     /// Reloads language definitions from disk.
     /// </summary>
     private void ReloadDefinitionsClick(object sender, RoutedEventArgs e) => ReloadDefinitions();
-
-    /// <summary>
-    /// Applies the selected language definition to the editor.
-    /// </summary>
-    private void LanguageSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (LanguageComboBox.SelectedItem is LanguageDefinition selectedLanguage)
-        {
-            ApplyLanguage(selectedLanguage);
-        }
-    }
 
     /// <summary>
     /// Tracks editor text changes in the current document model.
@@ -126,7 +117,12 @@ public partial class MainWindow : Window
             .Prepend(LanguageDefinition.CreatePlainText())
             .ToArray();
 
-        LanguageComboBox.ItemsSource = availableLanguages;
+        RebuildLanguageMenuItems();
+
+        var languageToApply = FindMatchingAvailableLanguage(currentLanguage)
+            ?? DetectLanguageForCurrentDocument();
+
+        ApplyLanguage(languageToApply);
     }
 
     /// <summary>
@@ -252,7 +248,6 @@ public partial class MainWindow : Window
         RefreshWindowTitle();
 
         var detectedLanguage = DetectLanguageForCurrentDocument();
-        LanguageComboBox.SelectedItem = detectedLanguage;
         ApplyLanguage(detectedLanguage);
     }
 
@@ -261,9 +256,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyLanguage(LanguageDefinition definition)
     {
-        Editor.SyntaxHighlighting = HighlightingDefinitionBuilder.Build(definition);
-        LanguageStatusTextBlock.Text = $"Language: {definition.Name}";
-        UpdateStatus($"Language: {definition.Name}");
+        currentLanguage = FindMatchingAvailableLanguage(definition) ?? definition;
+        Editor.SyntaxHighlighting = HighlightingDefinitionBuilder.Build(currentLanguage);
+        LanguageStatusTextBlock.Text = $"Language: {currentLanguage.Name}";
+        UpdateLanguageMenuSelection();
+        UpdateStatus($"Language: {currentLanguage.Name}");
     }
 
     /// <summary>
@@ -285,6 +282,64 @@ public partial class MainWindow : Window
         return availableLanguages.FirstOrDefault(language => language.SupportsExtension(extension))
             ?? availableLanguages.FirstOrDefault()
             ?? LanguageDefinition.CreatePlainText();
+    }
+
+    /// <summary>
+    /// Rebuilds the language selection items under the Language menu.
+    /// </summary>
+    private void RebuildLanguageMenuItems()
+    {
+        var separatorIndex = LanguageMenu.Items.IndexOf(LanguageMenuSeparator);
+        while (LanguageMenu.Items.Count > separatorIndex + 1)
+        {
+            LanguageMenu.Items.RemoveAt(LanguageMenu.Items.Count - 1);
+        }
+
+        foreach (var language in availableLanguages)
+        {
+            var menuItem = new MenuItem
+            {
+                Header = language.Name,
+                IsCheckable = true,
+                StaysOpenOnClick = true,
+                Tag = language,
+            };
+
+            menuItem.Click += LanguageMenuItemClick;
+            LanguageMenu.Items.Add(menuItem);
+        }
+    }
+
+    /// <summary>
+    /// Applies the language chosen from the Language menu.
+    /// </summary>
+    private void LanguageMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: LanguageDefinition selectedLanguage })
+        {
+            ApplyLanguage(selectedLanguage);
+        }
+    }
+
+    /// <summary>
+    /// Updates the checked state of language items in the Language menu.
+    /// </summary>
+    private void UpdateLanguageMenuSelection()
+    {
+        foreach (var menuItem in LanguageMenu.Items.OfType<MenuItem>())
+        {
+            menuItem.IsChecked = ReferenceEquals(menuItem.Tag, currentLanguage);
+        }
+    }
+
+    /// <summary>
+    /// Resolves a language definition to the current in-memory catalog entry when possible.
+    /// </summary>
+    private LanguageDefinition? FindMatchingAvailableLanguage(LanguageDefinition definition)
+    {
+        return availableLanguages.FirstOrDefault(language =>
+            string.Equals(language.SourcePath, definition.SourcePath, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(language.Name, definition.Name, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
