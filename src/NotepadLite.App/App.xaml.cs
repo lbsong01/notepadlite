@@ -8,7 +8,7 @@ namespace NotepadLite.App;
 public partial class App : Application
 {
 	/// <summary>
-	/// Starts the application and opens an initial file when one is supplied by the shell.
+	/// Starts the application, restores the previous session, and opens any files supplied by the shell.
 	/// </summary>
 	/// <param name="e">Application startup arguments.</param>
 	protected override void OnStartup(StartupEventArgs e)
@@ -19,9 +19,9 @@ public partial class App : Application
 		MainWindow = mainWindow;
 		mainWindow.Show();
 
-		if (e.Args.Length > 0)
+		foreach (var arg in e.Args)
 		{
-			mainWindow.OpenDocumentFromPath(e.Args[0]);
+			mainWindow.OpenDocumentFromPath(arg);
 		}
 	}
 }

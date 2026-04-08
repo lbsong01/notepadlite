@@ -167,9 +167,12 @@
     <DockPanel LastChildFill="True">
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
+                <MenuItem Header="_New" Click="NewDocumentClick" InputGestureText="Ctrl+N" />
                 <MenuItem Header="_Open..." Click="OpenDocumentClick" InputGestureText="Ctrl+O" />
                 <MenuItem Header="_Save" Click="SaveDocumentClick" InputGestureText="Ctrl+S" />
                 <MenuItem Header="Save _As..." Click="SaveDocumentAsClick" InputGestureText="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="_Close Tab" Click="CloseTabClick" InputGestureText="Ctrl+W" />
                 <Separator />
                 <MenuItem Header="E_xit" Click="ExitClick" />
             </MenuItem>
@@ -194,20 +197,54 @@
         </StatusBar>
 
         <Grid Margin="12,4,12,12">
-            <Border
-                    Background="{StaticResource SurfaceBrush}"
-                    BorderBrush="#D7D9DE"
-                    BorderThickness="1"
-                    CornerRadius="8">
-                <avalonedit:TextEditor x:Name="Editor"
-                                       Background="{StaticResource SurfaceBrush}"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       ShowLineNumbers="True"
-                                       FontFamily="Consolas"
-                                       FontSize="14"
-                                       HorizontalScrollBarVisibility="Auto"
-                                       VerticalScrollBarVisibility="Auto" />
-            </Border>
+            <TabControl x:Name="TabBar"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        SelectionChanged="TabBarSelectionChanged">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,0,2,0" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border x:Name="TabBorder"
+                                            Background="{StaticResource SurfaceAltBrush}"
+                                            BorderBrush="{StaticResource BorderBrushSoft}"
+                                            BorderThickness="1,1,1,0"
+                                            CornerRadius="6,6,0,0"
+                                            Padding="0"
+                                            Margin="0"
+                                            SnapsToDevicePixels="True">
+                                        <ContentPresenter ContentSource="Header"
+                                                          Margin="0"
+                                                          VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceBrush}" />
+                                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource BorderBrushStrong}" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceHoverBrush}" />
+                                        </Trigger>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsSelected" Value="True" />
+                                                <Condition Property="IsMouseOver" Value="True" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceBrush}" />
+                                        </MultiTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
+            </TabControl>
         </Grid>
     </DockPanel>
 </Window>
