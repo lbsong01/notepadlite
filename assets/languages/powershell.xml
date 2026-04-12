@@ -2,7 +2,8 @@
   <UserLang name="PowerShell" ext="ps1 psm1 psd1">
     <Keywords>
       <Keywords name="Keywords1">function param begin process end if elseif else foreach for while switch return try catch finally throw class enum</Keywords>
-      <Keywords name="Keywords2">Get-Item Set-Item Get-ChildItem Select-Object Where-Object ForEach-Object Write-Host Write-Output Test-Path</Keywords>
+      <Keywords name="Keywords2">Get-Item Set-Item Get-ChildItem Set-Content Add-Content Get-Content Remove-Item Copy-Item Move-Item New-Item Clear-Content Select-Object Where-Object ForEach-Object Sort-Object Group-Object Measure-Object Tee-Object Out-File Write-Host Write-Output Write-Error Write-Warning Write-Verbose Write-Debug Test-Path Join-Path Split-Path Resolve-Path Start-Process Stop-Process Get-Process Get-Service Start-Service Stop-Service Restart-Service Import-Module Export-Module Get-Command Invoke-Command Get-Help Set-Location Push-Location Pop-Location Get-Location</Keywords>
+      <Keywords name="Keywords3">-Path -LiteralPath -Filter -Recurse -Force -Name -Value -InputObject -Property -ExpandProperty -Exclude -Include -WhatIf -Confirm -ErrorAction -ErrorVariable -WarningAction -WarningVariable -Verbose -Debug -PassThru -Destination -Credential -ComputerName -ScriptBlock -ArgumentList -NoProfile -ExecutionPolicy</Keywords>
       <Keywords name="Operators">-eq -ne -gt -lt -ge -le -and -or -not = + - * /</Keywords>
     </Keywords>
     <Delimiters>

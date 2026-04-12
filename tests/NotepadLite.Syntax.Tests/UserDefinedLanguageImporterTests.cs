@@ -89,4 +89,44 @@ public sealed class UserDefinedLanguageImporterTests
         Assert.Equal(expectedLanguageName, result.Definition!.Name);
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Contains("failed", StringComparison.OrdinalIgnoreCase));
       }
+
+      /// <summary>
+      /// Verifies that the built-in PowerShell definition includes common cmdlets and parameter names.
+      /// </summary>
+      [Fact]
+      public void ImportFromXml_PowerShellAssetIncludesCommandsAndParameters()
+      {
+        var result = UserDefinedLanguageImporter.Import(GetAssetPath("powershell.xml"));
+
+        Assert.NotNull(result.Definition);
+        Assert.Contains(result.Definition!.KeywordGroups, group => group.Keywords.Contains("Get-ChildItem"));
+        Assert.Contains(result.Definition.KeywordGroups, group => group.Keywords.Contains("-Path"));
+      }
+
+      /// <summary>
+      /// Verifies that the highlighting builder matches hyphenated PowerShell parameters as keyword tokens.
+      /// </summary>
+      [Fact]
+      public void PowerShellHighlighting_MatchesCommonCommandsAndParameters()
+      {
+        var importResult = UserDefinedLanguageImporter.Import(GetAssetPath("powershell.xml"));
+
+        Assert.NotNull(importResult.Definition);
+
+        var highlightingDefinition = NotepadLite.App.HighlightingDefinitionBuilder.Build(importResult.Definition!);
+        var ruleExpressions = highlightingDefinition.MainRuleSet.Rules.Select(rule => rule.Regex).ToArray();
+
+        Assert.Contains(ruleExpressions, regex => regex.IsMatch("Get-ChildItem"));
+        Assert.Contains(ruleExpressions, regex => regex.IsMatch("-Path"));
+        Assert.DoesNotContain(ruleExpressions, regex => regex.IsMatch("Path"));
+      }
+
+      /// <summary>
+      /// Resolves a built-in language asset relative to the test output directory.
+      /// </summary>
+      private static string GetAssetPath(string fileName)
+      {
+        var assetPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "assets", "languages", fileName);
+        return Path.GetFullPath(assetPath);
+      }
 }

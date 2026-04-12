@@ -57,8 +57,7 @@ internal static partial class HighlightingDefinitionBuilder
                 continue;
             }
 
-            var escapedKeywords = keywordGroup.Keywords.Select(Regex.Escape);
-            var pattern = $@"\b(?:{string.Join("|", escapedKeywords)})\b";
+            var pattern = BuildTokenAlternationPattern(keywordGroup.Keywords);
             ruleSet.Rules.Add(new HighlightingRule
             {
                 Regex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.CultureInvariant),
@@ -126,6 +125,46 @@ internal static partial class HighlightingDefinitionBuilder
                 SpanColorIncludesEnd = true,
             });
         }
+    }
+
+    /// <summary>
+    /// Builds a single regex alternation that respects token boundaries for each keyword.
+    /// </summary>
+    private static string BuildTokenAlternationPattern(IReadOnlyList<string> tokens)
+    {
+        var patterns = tokens
+            .Distinct(StringComparer.Ordinal)
+            .OrderByDescending(static token => token.Length)
+            .Select(BuildTokenPattern);
+
+        return string.Join("|", patterns);
+    }
+
+    /// <summary>
+    /// Builds a regex for an individual token while preserving support for non-word prefixes like PowerShell parameters.
+    /// </summary>
+    private static string BuildTokenPattern(string token)
+    {
+        var escapedToken = Regex.Escape(token);
+        return StartsAndEndsWithWordCharacter(token)
+            ? $@"\b{escapedToken}\b"
+            : $@"(?<!\w){escapedToken}(?!\w)";
+    }
+
+    /// <summary>
+    /// Returns whether a token starts and ends with a word character.
+    /// </summary>
+    private static bool StartsAndEndsWithWordCharacter(string token)
+    {
+        return token.Length > 0 && IsWordCharacter(token[0]) && IsWordCharacter(token[^1]);
+    }
+
+    /// <summary>
+    /// Returns whether a character participates in regular word-boundary matching.
+    /// </summary>
+    private static bool IsWordCharacter(char value)
+    {
+        return char.IsLetterOrDigit(value) || value == '_';
     }
 
     [GeneratedRegex("$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline)]
