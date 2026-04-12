@@ -111,6 +111,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void ReloadDefinitionsClick(object sender, RoutedEventArgs e) => ReloadDefinitions();
 
+    /// <summary>
+    /// Creates a new tab from the tab-strip add button.
+    /// </summary>
+    private void AddTabButtonClick(object sender, RoutedEventArgs e) => NewDocument();
+
     // ── Tab lifecycle ───────────────────────────────────────────────────
 
     /// <summary>
