@@ -18,6 +18,12 @@ public sealed class SessionState
     /// </summary>
     [JsonPropertyName("activeTabId")]
     public Guid? ActiveTabId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the editor zoom level as a percentage (e.g. 100 = default).
+    /// </summary>
+    [JsonPropertyName("zoomLevel")]
+    public int ZoomLevel { get; set; } = 100;
 }
 
 /// <summary>

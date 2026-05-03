@@ -247,6 +247,11 @@
                 <Separator />
                 <MenuItem Header="E_xit" Click="ExitClick" />
             </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="Zoom _In" Click="ZoomInClick" InputGestureText="Ctrl++" />
+                <MenuItem Header="Zoom _Out" Click="ZoomOutClick" InputGestureText="Ctrl+-" />
+                <MenuItem Header="_Reset Zoom" Click="ResetZoomClick" InputGestureText="Ctrl+0" />
+            </MenuItem>
             <MenuItem x:Name="LanguageMenu" Header="_Language">
                 <MenuItem Header="Reload Definitions" Click="ReloadDefinitionsClick" />
                 <Separator x:Name="LanguageMenuSeparator" />
@@ -260,6 +265,10 @@
             <Separator />
             <StatusBarItem>
                 <TextBlock x:Name="LanguageStatusTextBlock" Text="Language: Plain Text" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <TextBlock x:Name="ZoomStatusTextBlock" Text="Zoom: 100%" />
             </StatusBarItem>
             <Separator />
             <StatusBarItem>

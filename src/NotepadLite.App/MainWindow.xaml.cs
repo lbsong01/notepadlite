@@ -25,6 +25,13 @@ public partial class MainWindow : Window
     private LanguageDefinition currentLanguage;
     private IReadOnlyList<LanguageDefinition> availableLanguages;
     private bool suppressTabSelectionChanged;
+    private int currentZoomPercent = DefaultZoomPercent;
+
+    private const double BaseFontSize = 14.0;
+    private const int DefaultZoomPercent = 100;
+    private const int MinZoomPercent = 50;
+    private const int MaxZoomPercent = 400;
+    private const int ZoomStepPercent = 10;
 
     /// <summary>
     /// Initializes the editor window, loads language definitions, and restores the previous session.
@@ -52,6 +59,21 @@ public partial class MainWindow : Window
         var closeTabCommand = new RoutedCommand("CloseTab", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(closeTabCommand, (_, _) => CloseActiveTab()));
         InputBindings.Add(new KeyBinding(closeTabCommand, new KeyGesture(Key.W, ModifierKeys.Control)));
+
+        var zoomInCommand = new RoutedCommand("ZoomIn", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(zoomInCommand, (_, _) => ZoomIn()));
+        InputBindings.Add(new KeyBinding(zoomInCommand, new KeyGesture(Key.OemPlus, ModifierKeys.Control)));
+        InputBindings.Add(new KeyBinding(zoomInCommand, new KeyGesture(Key.Add, ModifierKeys.Control)));
+
+        var zoomOutCommand = new RoutedCommand("ZoomOut", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(zoomOutCommand, (_, _) => ZoomOut()));
+        InputBindings.Add(new KeyBinding(zoomOutCommand, new KeyGesture(Key.OemMinus, ModifierKeys.Control)));
+        InputBindings.Add(new KeyBinding(zoomOutCommand, new KeyGesture(Key.Subtract, ModifierKeys.Control)));
+
+        var resetZoomCommand = new RoutedCommand("ResetZoom", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(resetZoomCommand, (_, _) => ResetZoom()));
+        InputBindings.Add(new KeyBinding(resetZoomCommand, new KeyGesture(Key.D0, ModifierKeys.Control)));
+        InputBindings.Add(new KeyBinding(resetZoomCommand, new KeyGesture(Key.NumPad0, ModifierKeys.Control)));
 
         Directory.CreateDirectory(userDefinitionsPath);
         ReloadDefinitions();
@@ -116,6 +138,21 @@ public partial class MainWindow : Window
     /// </summary>
     private void AddTabButtonClick(object sender, RoutedEventArgs e) => NewDocument();
 
+    /// <summary>
+    /// Increases the editor zoom level.
+    /// </summary>
+    private void ZoomInClick(object sender, RoutedEventArgs e) => ZoomIn();
+
+    /// <summary>
+    /// Decreases the editor zoom level.
+    /// </summary>
+    private void ZoomOutClick(object sender, RoutedEventArgs e) => ZoomOut();
+
+    /// <summary>
+    /// Resets the editor zoom level to the default.
+    /// </summary>
+    private void ResetZoomClick(object sender, RoutedEventArgs e) => ResetZoom();
+
     // ── Tab lifecycle ───────────────────────────────────────────────────
 
     /// <summary>
@@ -156,6 +193,8 @@ public partial class MainWindow : Window
         };
 
         editor.TextChanged += EditorTextChanged;
+        editor.PreviewMouseWheel += EditorPreviewMouseWheel;
+        ApplyZoomToEditor(editor);
 
         var border = new Border
         {
@@ -261,6 +300,7 @@ public partial class MainWindow : Window
         if (TabBar.Items[index] is TabItem { Content: Border { Child: TextEditor editor } })
         {
             editor.TextChanged -= EditorTextChanged;
+            editor.PreviewMouseWheel -= EditorPreviewMouseWheel;
         }
 
         suppressTabSelectionChanged = true;
@@ -361,7 +401,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            sessionService.Save(sessionFilePath, openTabs, ActiveTab?.Id);
+            sessionService.Save(sessionFilePath, openTabs, ActiveTab?.Id, currentZoomPercent);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -374,11 +414,14 @@ public partial class MainWindow : Window
     /// </summary>
     internal void RestoreSession()
     {
-        var (tabs, activeTabId) = sessionService.Load(sessionFilePath);
+        var (tabs, activeTabId, zoomLevel) = sessionService.Load(sessionFilePath);
+
+        currentZoomPercent = ClampZoom(zoomLevel);
 
         if (tabs.Count == 0)
         {
             NewDocument();
+            RefreshZoomStatus();
             return;
         }
 
@@ -397,6 +440,7 @@ public partial class MainWindow : Window
 
         TabBar.SelectedIndex = activeIndex >= 0 ? activeIndex : 0;
         RefreshActiveTabPresentation();
+        RefreshZoomStatus();
     }
 
     // ── Language definitions ────────────────────────────────────────────
@@ -723,5 +767,97 @@ public partial class MainWindow : Window
     private void UpdateStatus(string message)
     {
         StatusTextBlock.Text = message;
+    }
+
+    // ── Zoom ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Increases the zoom level by one step.
+    /// </summary>
+    private void ZoomIn() => SetZoom(currentZoomPercent + ZoomStepPercent);
+
+    /// <summary>
+    /// Decreases the zoom level by one step.
+    /// </summary>
+    private void ZoomOut() => SetZoom(currentZoomPercent - ZoomStepPercent);
+
+    /// <summary>
+    /// Resets the zoom level to <see cref="DefaultZoomPercent"/>.
+    /// </summary>
+    private void ResetZoom() => SetZoom(DefaultZoomPercent);
+
+    /// <summary>
+    /// Sets the zoom level (clamped) and re-applies it to every open editor.
+    /// </summary>
+    private void SetZoom(int newZoomPercent)
+    {
+        var clamped = ClampZoom(newZoomPercent);
+        if (clamped == currentZoomPercent)
+        {
+            return;
+        }
+
+        currentZoomPercent = clamped;
+
+        foreach (var item in TabBar.Items.OfType<TabItem>())
+        {
+            if (item.Content is Border { Child: TextEditor editor })
+            {
+                ApplyZoomToEditor(editor);
+            }
+        }
+
+        RefreshZoomStatus();
+        UpdateStatus($"Zoom: {currentZoomPercent}%");
+    }
+
+    /// <summary>
+    /// Applies the current zoom factor to a single editor.
+    /// </summary>
+    private void ApplyZoomToEditor(TextEditor editor)
+    {
+        editor.FontSize = BaseFontSize * currentZoomPercent / 100.0;
+    }
+
+    /// <summary>
+    /// Refreshes the zoom indicator in the status bar.
+    /// </summary>
+    private void RefreshZoomStatus()
+    {
+        ZoomStatusTextBlock.Text = $"Zoom: {currentZoomPercent}%";
+    }
+
+    /// <summary>
+    /// Clamps the requested zoom percentage to the supported range, snapping to the nearest step.
+    /// </summary>
+    private static int ClampZoom(int value)
+    {
+        if (value < MinZoomPercent)
+        {
+            return MinZoomPercent;
+        }
+
+        return value > MaxZoomPercent ? MaxZoomPercent : value;
+    }
+
+    /// <summary>
+    /// Handles Ctrl+MouseWheel on an editor to drive zoom.
+    /// </summary>
+    private void EditorPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (e.Delta > 0)
+        {
+            ZoomIn();
+        }
+        else if (e.Delta < 0)
+        {
+            ZoomOut();
+        }
     }
 }

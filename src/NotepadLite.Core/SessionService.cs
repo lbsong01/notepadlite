@@ -18,7 +18,8 @@ public sealed class SessionService
     /// <param name="sessionFilePath">The full path of the session JSON file.</param>
     /// <param name="tabs">The currently open tabs in display order.</param>
     /// <param name="activeTabId">The identifier of the active tab, if any.</param>
-    public void Save(string sessionFilePath, IReadOnlyList<DocumentTab> tabs, Guid? activeTabId)
+    /// <param name="zoomLevel">The editor zoom level as a percentage. Defaults to 100.</param>
+    public void Save(string sessionFilePath, IReadOnlyList<DocumentTab> tabs, Guid? activeTabId, int zoomLevel = 100)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionFilePath);
         ArgumentNullException.ThrowIfNull(tabs);
@@ -26,6 +27,7 @@ public sealed class SessionService
         var state = new SessionState
         {
             ActiveTabId = activeTabId,
+            ZoomLevel = zoomLevel,
             Tabs = tabs.Select((tab, index) => new SessionTab
             {
                 Id = tab.Id,
@@ -51,16 +53,16 @@ public sealed class SessionService
     /// </summary>
     /// <param name="sessionFilePath">The full path of the session JSON file.</param>
     /// <returns>
-    /// A tuple containing the restored tabs and the previously active tab identifier.
-    /// Returns an empty list when no session file exists or deserialization fails.
+    /// A tuple containing the restored tabs, the previously active tab identifier, and the saved zoom level.
+    /// Returns an empty list and the default zoom level when no session file exists or deserialization fails.
     /// </returns>
-    public (IReadOnlyList<DocumentTab> Tabs, Guid? ActiveTabId) Load(string sessionFilePath)
+    public (IReadOnlyList<DocumentTab> Tabs, Guid? ActiveTabId, int ZoomLevel) Load(string sessionFilePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionFilePath);
 
         if (!File.Exists(sessionFilePath))
         {
-            return ([], null);
+            return ([], null, 100);
         }
 
         try
@@ -70,7 +72,7 @@ public sealed class SessionService
 
             if (state is null || state.Tabs.Count == 0)
             {
-                return ([], null);
+                return ([], null, state?.ZoomLevel ?? 100);
             }
 
             var tabs = new List<DocumentTab>(state.Tabs.Count);
@@ -83,11 +85,11 @@ public sealed class SessionService
                 tabs.Add(DocumentTab.Restore(sessionTab.Id, document, sessionTab.LanguageName));
             }
 
-            return (tabs, state.ActiveTabId);
+            return (tabs, state.ActiveTabId, state.ZoomLevel);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            return ([], null);
+            return ([], null, 100);
         }
     }
 
