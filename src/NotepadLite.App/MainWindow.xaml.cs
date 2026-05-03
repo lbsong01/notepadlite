@@ -22,10 +22,13 @@ public partial class MainWindow : Window
     private readonly string userDefinitionsPath;
     private readonly string sessionFilePath;
     private readonly List<DocumentTab> openTabs = [];
+    private readonly Dictionary<Guid, SearchHighlightRenderer> tabRenderers = [];
     private LanguageDefinition currentLanguage;
     private IReadOnlyList<LanguageDefinition> availableLanguages;
     private bool suppressTabSelectionChanged;
     private int currentZoomPercent = DefaultZoomPercent;
+    private IReadOnlyList<SearchMatch> currentMatches = Array.Empty<SearchMatch>();
+    private int currentMatchIndex = -1;
 
     private const double BaseFontSize = 14.0;
     private const int DefaultZoomPercent = 100;
@@ -74,6 +77,22 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(resetZoomCommand, (_, _) => ResetZoom()));
         InputBindings.Add(new KeyBinding(resetZoomCommand, new KeyGesture(Key.D0, ModifierKeys.Control)));
         InputBindings.Add(new KeyBinding(resetZoomCommand, new KeyGesture(Key.NumPad0, ModifierKeys.Control)));
+
+        var showFindCommand = new RoutedCommand("ShowFind", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(showFindCommand, (_, _) => ShowFindReplace(showReplace: false)));
+        InputBindings.Add(new KeyBinding(showFindCommand, new KeyGesture(Key.F, ModifierKeys.Control)));
+
+        var showReplaceCommand = new RoutedCommand("ShowReplace", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(showReplaceCommand, (_, _) => ShowFindReplace(showReplace: true)));
+        InputBindings.Add(new KeyBinding(showReplaceCommand, new KeyGesture(Key.H, ModifierKeys.Control)));
+
+        var findNextCommand = new RoutedCommand("FindNext", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(findNextCommand, (_, _) => FindNext()));
+        InputBindings.Add(new KeyBinding(findNextCommand, new KeyGesture(Key.F3)));
+
+        var findPreviousCommand = new RoutedCommand("FindPrevious", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(findPreviousCommand, (_, _) => FindPrevious()));
+        InputBindings.Add(new KeyBinding(findPreviousCommand, new KeyGesture(Key.F3, ModifierKeys.Shift)));
 
         Directory.CreateDirectory(userDefinitionsPath);
         ReloadDefinitions();
@@ -196,6 +215,10 @@ public partial class MainWindow : Window
         editor.PreviewMouseWheel += EditorPreviewMouseWheel;
         ApplyZoomToEditor(editor);
 
+        var renderer = new SearchHighlightRenderer();
+        editor.TextArea.TextView.BackgroundRenderers.Add(renderer);
+        tabRenderers[tab.Id] = renderer;
+
         var border = new Border
         {
             Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush"),
@@ -301,7 +324,13 @@ public partial class MainWindow : Window
         {
             editor.TextChanged -= EditorTextChanged;
             editor.PreviewMouseWheel -= EditorPreviewMouseWheel;
+            if (tabRenderers.TryGetValue(tab.Id, out var renderer))
+            {
+                editor.TextArea.TextView.BackgroundRenderers.Remove(renderer);
+            }
         }
+
+        tabRenderers.Remove(tab.Id);
 
         suppressTabSelectionChanged = true;
         openTabs.RemoveAt(index);
@@ -324,6 +353,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void TabBarSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        RecomputeHighlights();
         if (suppressTabSelectionChanged)
         {
             return;
@@ -362,6 +392,10 @@ public partial class MainWindow : Window
         if (tabIndex == TabBar.SelectedIndex)
         {
             RefreshWindowTitle();
+            if (FindReplacePanel.Visibility == Visibility.Visible)
+            {
+                RecomputeHighlights();
+            }
             UpdateStatus("Edited");
         }
     }
@@ -859,5 +893,403 @@ public partial class MainWindow : Window
         {
             ZoomOut();
         }
+    }
+
+    // ── Find & Replace ──────────────────────────────────────────────────
+
+    private const int MaxHighlightedMatches = 5000;
+
+    private void ShowFindClick(object sender, RoutedEventArgs e) => ShowFindReplace(showReplace: false);
+
+    private void ShowReplaceClick(object sender, RoutedEventArgs e) => ShowFindReplace(showReplace: true);
+
+    private void HideFindReplaceClick(object sender, RoutedEventArgs e) => HideFindReplace();
+
+    private void FindNextClick(object sender, RoutedEventArgs e) => FindNext();
+
+    private void FindPreviousClick(object sender, RoutedEventArgs e) => FindPrevious();
+
+    private void ReplaceClick(object sender, RoutedEventArgs e) => ReplaceCurrent();
+
+    private void ReplaceAllClick(object sender, RoutedEventArgs e) => ReplaceAll();
+
+    private void FindTextBoxChanged(object sender, TextChangedEventArgs e) => RecomputeHighlights();
+
+    private void FindOptionChanged(object sender, RoutedEventArgs e) => RecomputeHighlights();
+
+    private void FindReplaceTextBoxKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            HideFindReplace();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                FindPrevious();
+            }
+            else
+            {
+                FindNext();
+            }
+
+            e.Handled = true;
+        }
+    }
+
+    private void ShowFindReplace(bool showReplace)
+    {
+        FindReplacePanel.Visibility = Visibility.Visible;
+        ReplaceTextBox.Visibility = Visibility.Visible;
+        ReplaceButton.Visibility = Visibility.Visible;
+        ReplaceAllButton.Visibility = Visibility.Visible;
+
+        // Pre-fill with the current single-line selection if any.
+        if (ActiveEditor is { } editor && editor.SelectionLength > 0)
+        {
+            var selected = editor.SelectedText;
+            if (!selected.Contains('\n') && !selected.Contains('\r'))
+            {
+                FindTextBox.Text = selected;
+            }
+        }
+
+        RecomputeHighlights();
+
+        if (showReplace)
+        {
+            ReplaceTextBox.Focus();
+        }
+        else
+        {
+            FindTextBox.Focus();
+            FindTextBox.SelectAll();
+        }
+    }
+
+    private void HideFindReplace()
+    {
+        FindReplacePanel.Visibility = Visibility.Collapsed;
+        ClearHighlights();
+        ActiveEditor?.Focus();
+    }
+
+    private SearchOptions CurrentSearchOptions() => new(
+        FindTextBox?.Text ?? string.Empty,
+        MatchCaseCheckBox?.IsChecked == true,
+        WholeWordCheckBox?.IsChecked == true);
+
+    private void RecomputeHighlights()
+    {
+        if (ActiveEditor is not { } editor)
+        {
+            currentMatches = Array.Empty<SearchMatch>();
+            currentMatchIndex = -1;
+            return;
+        }
+
+        if (FindReplacePanel?.Visibility != Visibility.Visible)
+        {
+            ClearHighlights();
+            return;
+        }
+
+        var options = CurrentSearchOptions();
+        if (string.IsNullOrEmpty(options.Pattern))
+        {
+            currentMatches = Array.Empty<SearchMatch>();
+            currentMatchIndex = -1;
+            ApplyHighlightsToActiveEditor();
+            UpdateFindStatus(0, -1, capped: false);
+            return;
+        }
+
+        var all = TextSearchEngine.FindAll(editor.Text, options);
+        var capped = false;
+        if (all.Count > MaxHighlightedMatches)
+        {
+            capped = true;
+            var trimmed = new List<SearchMatch>(MaxHighlightedMatches);
+            for (var i = 0; i < MaxHighlightedMatches; i++)
+            {
+                trimmed.Add(all[i]);
+            }
+
+            currentMatches = trimmed;
+        }
+        else
+        {
+            currentMatches = all;
+        }
+
+        currentMatchIndex = LocateCurrentIndex(editor.SelectionStart);
+        ApplyHighlightsToActiveEditor();
+        UpdateFindStatus(all.Count, currentMatchIndex, capped);
+    }
+
+    private int LocateCurrentIndex(int caretOffset)
+    {
+        for (var i = 0; i < currentMatches.Count; i++)
+        {
+            if (currentMatches[i].Offset >= caretOffset)
+            {
+                return i;
+            }
+        }
+
+        return currentMatches.Count > 0 ? 0 : -1;
+    }
+
+    private void ApplyHighlightsToActiveEditor()
+    {
+        if (ActiveTab is null || ActiveEditor is not { } editor)
+        {
+            return;
+        }
+
+        if (!tabRenderers.TryGetValue(ActiveTab.Id, out var renderer))
+        {
+            return;
+        }
+
+        renderer.SetMatches(currentMatches, currentMatchIndex);
+        editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
+    }
+
+    private void ClearHighlights()
+    {
+        currentMatches = Array.Empty<SearchMatch>();
+        currentMatchIndex = -1;
+
+        foreach (var (_, renderer) in tabRenderers)
+        {
+            renderer.Clear();
+        }
+
+        if (ActiveEditor is { } editor)
+        {
+            editor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Selection);
+        }
+
+        if (FindStatusTextBlock is not null)
+        {
+            FindStatusTextBlock.Text = string.Empty;
+        }
+    }
+
+    private void UpdateFindStatus(int totalMatches, int activeIndex, bool capped)
+    {
+        if (FindStatusTextBlock is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(FindTextBox.Text))
+        {
+            FindStatusTextBlock.Text = string.Empty;
+            return;
+        }
+
+        if (totalMatches == 0)
+        {
+            FindStatusTextBlock.Text = "No matches";
+            return;
+        }
+
+        var prefix = activeIndex >= 0 ? $"{activeIndex + 1} of {totalMatches}" : $"{totalMatches} matches";
+        FindStatusTextBlock.Text = capped ? $"{prefix} (showing first {MaxHighlightedMatches})" : prefix;
+    }
+
+    private void FindNext()
+    {
+        if (ActiveEditor is not { } editor)
+        {
+            return;
+        }
+
+        EnsureFindPanelVisibleForKeyboard();
+        var options = CurrentSearchOptions();
+        if (string.IsNullOrEmpty(options.Pattern))
+        {
+            return;
+        }
+
+        var startIndex = editor.SelectionStart + editor.SelectionLength;
+        var match = TextSearchEngine.FindNext(editor.Text, startIndex, options);
+        var wrapped = false;
+        if (match is null)
+        {
+            match = TextSearchEngine.FindNext(editor.Text, 0, options);
+            wrapped = true;
+        }
+
+        if (match is null)
+        {
+            UpdateStatus("No matches");
+            return;
+        }
+
+        SelectMatch(editor, match.Value);
+        if (wrapped)
+        {
+            UpdateStatus("Wrapped to top");
+        }
+    }
+
+    private void FindPrevious()
+    {
+        if (ActiveEditor is not { } editor)
+        {
+            return;
+        }
+
+        EnsureFindPanelVisibleForKeyboard();
+        var options = CurrentSearchOptions();
+        if (string.IsNullOrEmpty(options.Pattern))
+        {
+            return;
+        }
+
+        var startIndex = editor.SelectionStart;
+        var match = TextSearchEngine.FindPrevious(editor.Text, startIndex, options);
+        var wrapped = false;
+        if (match is null)
+        {
+            match = TextSearchEngine.FindPrevious(editor.Text, editor.Text.Length, options);
+            wrapped = true;
+        }
+
+        if (match is null)
+        {
+            UpdateStatus("No matches");
+            return;
+        }
+
+        SelectMatch(editor, match.Value);
+        if (wrapped)
+        {
+            UpdateStatus("Wrapped to bottom");
+        }
+    }
+
+    private void EnsureFindPanelVisibleForKeyboard()
+    {
+        if (FindReplacePanel.Visibility != Visibility.Visible)
+        {
+            ShowFindReplace(showReplace: false);
+        }
+    }
+
+    private void SelectMatch(TextEditor editor, SearchMatch match)
+    {
+        editor.Select(match.Offset, match.Length);
+        var line = editor.Document.GetLineByOffset(match.Offset);
+        editor.ScrollToLine(line.LineNumber);
+        editor.TextArea.Caret.BringCaretToView();
+
+        currentMatchIndex = LocateCurrentIndex(match.Offset);
+        // Re-anchor: prefer the exact offset match if present.
+        for (var i = 0; i < currentMatches.Count; i++)
+        {
+            if (currentMatches[i].Offset == match.Offset)
+            {
+                currentMatchIndex = i;
+                break;
+            }
+        }
+
+        ApplyHighlightsToActiveEditor();
+        UpdateFindStatus(currentMatches.Count, currentMatchIndex, capped: false);
+    }
+
+    private void ReplaceCurrent()
+    {
+        if (ActiveEditor is not { } editor)
+        {
+            return;
+        }
+
+        var options = CurrentSearchOptions();
+        if (string.IsNullOrEmpty(options.Pattern))
+        {
+            return;
+        }
+
+        var replacement = ReplaceTextBox.Text ?? string.Empty;
+        var comparison = options.MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+        // If the current selection equals the pattern (under options) at a valid match boundary, replace it.
+        if (editor.SelectionLength == options.Pattern.Length
+            && string.Equals(editor.SelectedText, options.Pattern, comparison)
+            && (!options.WholeWord || IsWholeWordSelection(editor)))
+        {
+            var offset = editor.SelectionStart;
+            editor.Document.Replace(offset, editor.SelectionLength, replacement);
+            editor.Select(offset + replacement.Length, 0);
+            RecomputeHighlights();
+        }
+
+        FindNext();
+    }
+
+    private static bool IsWholeWordSelection(TextEditor editor)
+    {
+        var text = editor.Text;
+        var start = editor.SelectionStart;
+        var end = start + editor.SelectionLength;
+        var leftOk = start == 0 || !IsWordChar(text[start - 1]);
+        var rightOk = end >= text.Length || !IsWordChar(text[end]);
+        return leftOk && rightOk;
+    }
+
+    private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+    private void ReplaceAll()
+    {
+        if (ActiveEditor is not { } editor)
+        {
+            return;
+        }
+
+        var options = CurrentSearchOptions();
+        if (string.IsNullOrEmpty(options.Pattern))
+        {
+            return;
+        }
+
+        var replacement = ReplaceTextBox.Text ?? string.Empty;
+        var matches = TextSearchEngine.FindAll(editor.Text, options);
+        if (matches.Count == 0)
+        {
+            UpdateStatus("No matches to replace");
+            return;
+        }
+
+        var source = editor.Text;
+        var builder = new System.Text.StringBuilder(source.Length);
+        var cursor = 0;
+        foreach (var m in matches)
+        {
+            if (m.Offset > cursor)
+            {
+                builder.Append(source, cursor, m.Offset - cursor);
+            }
+
+            builder.Append(replacement);
+            cursor = m.Offset + m.Length;
+        }
+
+        if (cursor < source.Length)
+        {
+            builder.Append(source, cursor, source.Length - cursor);
+        }
+
+        editor.Document.Replace(0, source.Length, builder.ToString());
+        UpdateStatus($"Replaced {matches.Count} occurrence(s)");
+        RecomputeHighlights();
     }
 }

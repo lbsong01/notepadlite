@@ -247,6 +247,13 @@
                 <Separator />
                 <MenuItem Header="E_xit" Click="ExitClick" />
             </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Find..." Click="ShowFindClick" InputGestureText="Ctrl+F" />
+                <MenuItem Header="_Replace..." Click="ShowReplaceClick" InputGestureText="Ctrl+H" />
+                <Separator />
+                <MenuItem Header="Find _Next" Click="FindNextClick" InputGestureText="F3" />
+                <MenuItem Header="Find _Previous" Click="FindPreviousClick" InputGestureText="Shift+F3" />
+            </MenuItem>
             <MenuItem Header="_View">
                 <MenuItem Header="Zoom _In" Click="ZoomInClick" InputGestureText="Ctrl++" />
                 <MenuItem Header="Zoom _Out" Click="ZoomOutClick" InputGestureText="Ctrl+-" />
@@ -277,7 +284,112 @@
         </StatusBar>
 
         <Grid Margin="12,4,12,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border x:Name="FindReplacePanel"
+                    Grid.Row="1"
+                    Margin="0,8,0,0"
+                    Padding="10,8"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrushSoft}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Find:"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,4" />
+                    <TextBox x:Name="FindTextBox"
+                             Grid.Row="0" Grid.Column="1"
+                             Margin="0,0,8,4"
+                             Padding="6,4"
+                             VerticalContentAlignment="Center"
+                             TextChanged="FindTextBoxChanged"
+                             KeyDown="FindReplaceTextBoxKeyDown" />
+                    <StackPanel Grid.Row="0" Grid.Column="2"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,4">
+                        <Button x:Name="FindPreviousButton"
+                                Content="◀ Prev"
+                                Padding="10,4"
+                                Margin="0,0,4,0"
+                                Click="FindPreviousClick" />
+                        <Button x:Name="FindNextButton"
+                                Content="Next ▶"
+                                Padding="10,4"
+                                Margin="0,0,8,0"
+                                Click="FindNextClick" />
+                        <Button Content="✕"
+                                Width="28"
+                                Padding="0"
+                                ToolTip="Close (Esc)"
+                                Click="HideFindReplaceClick" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Replace:"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,4" />
+                    <TextBox x:Name="ReplaceTextBox"
+                             Grid.Row="1" Grid.Column="1"
+                             Margin="0,0,8,4"
+                             Padding="6,4"
+                             VerticalContentAlignment="Center"
+                             KeyDown="FindReplaceTextBoxKeyDown" />
+                    <StackPanel Grid.Row="1" Grid.Column="2"
+                                Orientation="Horizontal"
+                                Margin="0,0,0,4">
+                        <Button x:Name="ReplaceButton"
+                                Content="Replace"
+                                Padding="10,4"
+                                Margin="0,0,4,0"
+                                Click="ReplaceClick" />
+                        <Button x:Name="ReplaceAllButton"
+                                Content="Replace All"
+                                Padding="10,4"
+                                Click="ReplaceAllClick" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                Orientation="Horizontal"
+                                Margin="0,4,0,0">
+                        <CheckBox x:Name="MatchCaseCheckBox"
+                                  Content="Match case"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,16,0"
+                                  Checked="FindOptionChanged"
+                                  Unchecked="FindOptionChanged" />
+                        <CheckBox x:Name="WholeWordCheckBox"
+                                  Content="Whole word"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,16,0"
+                                  Checked="FindOptionChanged"
+                                  Unchecked="FindOptionChanged" />
+                        <TextBlock x:Name="FindStatusTextBlock"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <TabControl x:Name="TabBar"
+                        Grid.Row="0"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="0"
