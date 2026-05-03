@@ -253,6 +253,8 @@
                 <Separator />
                 <MenuItem Header="Find _Next" Click="FindNextClick" InputGestureText="F3" />
                 <MenuItem Header="Find _Previous" Click="FindPreviousClick" InputGestureText="Shift+F3" />
+                <Separator />
+                <MenuItem Header="Format _Document" Click="FormatDocumentClick" InputGestureText="Shift+Alt+F" />
             </MenuItem>
             <MenuItem Header="_View">
                 <MenuItem Header="Zoom _In" Click="ZoomInClick" InputGestureText="Ctrl++" />

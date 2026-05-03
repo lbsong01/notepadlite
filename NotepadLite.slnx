@@ -5,6 +5,7 @@
     <Project Path="src/NotepadLite.Syntax/NotepadLite.Syntax.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/NotepadLite.Core.Tests/NotepadLite.Core.Tests.csproj" />
     <Project Path="tests/NotepadLite.Syntax.Tests/NotepadLite.Syntax.Tests.csproj" />
   </Folder>
 </Solution>

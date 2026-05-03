@@ -1,6 +1,7 @@
 ﻿using ICSharpCode.AvalonEdit;
 using Microsoft.Win32;
 using NotepadLite.Core;
+using NotepadLite.Core.Formatting;
 using NotepadLite.Syntax;
 using System.ComponentModel;
 using System.IO;
@@ -17,6 +18,7 @@ namespace NotepadLite.App;
 public partial class MainWindow : Window
 {
     private readonly DocumentFileService documentFileService;
+    private readonly DocumentFormattingService documentFormattingService;
     private readonly SessionService sessionService;
     private readonly string builtInDefinitionsPath;
     private readonly string userDefinitionsPath;
@@ -43,6 +45,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         documentFileService = new DocumentFileService();
+        documentFormattingService = new DocumentFormattingService();
         sessionService = new SessionService();
         builtInDefinitionsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Languages");
         userDefinitionsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NotepadLite", "Languages");
@@ -93,6 +96,10 @@ public partial class MainWindow : Window
         var findPreviousCommand = new RoutedCommand("FindPrevious", typeof(MainWindow));
         CommandBindings.Add(new CommandBinding(findPreviousCommand, (_, _) => FindPrevious()));
         InputBindings.Add(new KeyBinding(findPreviousCommand, new KeyGesture(Key.F3, ModifierKeys.Shift)));
+
+        var formatDocumentCommand = new RoutedCommand("FormatDocument", typeof(MainWindow));
+        CommandBindings.Add(new CommandBinding(formatDocumentCommand, (_, _) => FormatDocument(), FormatDocumentCanExecute));
+        InputBindings.Add(new KeyBinding(formatDocumentCommand, new KeyGesture(Key.F, ModifierKeys.Shift | ModifierKeys.Alt)));
 
         Directory.CreateDirectory(userDefinitionsPath);
         ReloadDefinitions();
@@ -908,6 +915,62 @@ public partial class MainWindow : Window
     private void FindNextClick(object sender, RoutedEventArgs e) => FindNext();
 
     private void FindPreviousClick(object sender, RoutedEventArgs e) => FindPrevious();
+
+    private void FormatDocumentClick(object sender, RoutedEventArgs e) => FormatDocument();
+
+    private void FormatDocumentCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = ActiveEditor is not null;
+    }
+
+    private void FormatDocument()
+    {
+        if (ActiveEditor is not { } editor)
+        {
+            return;
+        }
+
+        var languageName = ActiveTab?.LanguageName;
+        var extension = ActiveTab?.Document.FilePath is { } path ? Path.GetExtension(path) : null;
+
+        var result = documentFormattingService.Format(editor.Text, languageName, extension);
+        if (!result.Success)
+        {
+            UpdateStatus("Format failed");
+            MessageBox.Show(
+                this,
+                $"Unable to format document.{Environment.NewLine}{Environment.NewLine}{result.ErrorMessage}",
+                "Format document failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.Equals(result.FormattedText, editor.Text, StringComparison.Ordinal))
+        {
+            UpdateStatus("Document already formatted");
+            return;
+        }
+
+        var caretOffset = editor.CaretOffset;
+        var verticalOffset = editor.VerticalOffset;
+        var horizontalOffset = editor.HorizontalOffset;
+
+        editor.Document.BeginUpdate();
+        try
+        {
+            editor.Document.Replace(0, editor.Document.TextLength, result.FormattedText);
+        }
+        finally
+        {
+            editor.Document.EndUpdate();
+        }
+
+        editor.CaretOffset = Math.Min(caretOffset, editor.Document.TextLength);
+        editor.ScrollToVerticalOffset(verticalOffset);
+        editor.ScrollToHorizontalOffset(horizontalOffset);
+        UpdateStatus("Formatted document");
+    }
 
     private void ReplaceClick(object sender, RoutedEventArgs e) => ReplaceCurrent();
 
